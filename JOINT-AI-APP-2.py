@@ -207,7 +207,7 @@ if st.session_state['model_tq']:
         layout_l, layout_r = st.columns([1.1, 1.4], gap="large")
         with layout_l:
             st.markdown("<div class='glass-card'><div class='glass-card-title'>Boundary Condition Optimizer</div>", unsafe_allow_html=True)
-            # (생략: 기존 코드와 동일한 레이아웃에 맞춰 하단 로직 포함)
+            # (기존 UI 로직 유지)
             if st.button("RUN INVERSE INFERENCE SEARCH", type="secondary", use_container_width=True):
                 X_vars = st.session_state['process_vars']
                 def target_loss_function(x_input):
@@ -223,22 +223,18 @@ if st.session_state['model_tq']:
                     elif pred_ed > st.session_state['target_ed_range'][1]: ed_loss = ((pred_ed - st.session_state['target_ed_range'][1]) / 1000.0) ** 2
                     return tq_loss + ed_loss
                 
-                # 최적화 로직 (5개 변수 기준)
                 res = minimize(target_loss_function, [5.0, 2.5, 0, 5.0, 5.0], method='SLSQP')
                 st.session_state['opt_result_x'] = res.x
-                st.session_state['opt_pred_tq'] = st.session_state['model_tq'].predict(st.session_state['scaler'].transform(pd.DataFrame([res.x], columns=X_vars)))[0]
-                st.session_state['opt_pred_ed'] = st.session_state['model_ed'].predict(st.session_state['scaler'].transform(pd.DataFrame([res.x], columns=X_vars)))[0]
-                st.session_state['confidence_score'] = 95.0
                 st.rerun()
 
         with layout_r:
             if st.session_state['opt_result_x'] is not None:
-                st.write(f"Result: {st.session_state['opt_result_x']}") # 간략화 표시
+                st.write(f"Result: {st.session_state['opt_result_x']}")
 
     with tab2:
         st.markdown("<div class='glass-card'><div class='glass-card-title'>Real-time Parameter Input Panel</div>", unsafe_allow_html=True)
-        st.session_state['sim_cd'] = st.slider("Caulking Distance", 0.0, 15.0, st.session_state['sim_cd'])
-        st.session_state['sim_sc'] = st.slider("Stud Center", 0.0, 10.0, st.session_state['sim_sc'])
+        st.session_state['sim_cd'] = st.slider("CD", 0.0, 15.0, st.session_state['sim_cd'])
+        st.session_state['sim_sc'] = st.slider("SC", 0.0, 10.0, st.session_state['sim_sc'])
         st.session_state['sim_sl'] = st.slider("S_L", 0.0, 10.0, st.session_state['sim_sl'])
         st.session_state['sim_tr'] = st.slider("T_R", 0.0, 10.0, st.session_state['sim_tr'])
         
@@ -248,7 +244,6 @@ if st.session_state['model_tq']:
             scaled = st.session_state['scaler'].transform(pd.DataFrame(query, columns=X_vars))
             st.session_state['sim_pred_tq'] = st.session_state['model_tq'].predict(scaled)[0]
             st.session_state['sim_pred_ed'] = st.session_state['model_ed'].predict(scaled)[0]
-            st.session_state['sim_confidence'] = 90.0
             st.rerun()
 
     with tab3:
