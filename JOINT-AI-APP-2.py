@@ -3,12 +3,11 @@ import pandas as pd
 import numpy as np
 import io
 import ezdxf
-import re
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import MinMaxScaler
 from scipy.optimize import minimize
 
-# 1. 페이지 설정 및 스타일
+# 1. 페이지 설정
 st.set_page_config(layout="wide", page_title="JOINT AI - Engineering Suite", page_icon="⚡")
 
 # 2. 세션 초기화
@@ -17,15 +16,16 @@ if 'dxf_params' not in st.session_state:
 if 'model_tq' not in st.session_state:
     st.session_state.update({'model_tq': None, 'model_ed': None, 'scaler': None, 'df_caulking': pd.DataFrame()})
 
-# 3. DXF 파싱 함수 (데이터 구조  반영)
+# 3. DXF 파싱 함수 (오류 방지 바이너리 스트림 처리)
 def extract_dxf_params(dxf_file):
     params = {"S_L": 0.0, "T_R": 0.0}
     try:
+        # 파일 내용을 메모리 스트림으로 변환
         doc = ezdxf.read(io.BytesIO(dxf_file.getvalue()))
         msp = doc.modelspace()
         texts = [e.dxf.text for e in msp.query('TEXT') if e.dxftype() == 'TEXT']
         
-        # 텍스트 리스트에서 S_L과 T_R 값 찾기 
+        # 텍스트 리스트에서 S_L과 T_R 값 찾기
         for i, txt in enumerate(texts):
             if "S_L" in txt and i + 1 < len(texts):
                 params["S_L"] = float(texts[i+1])
@@ -42,7 +42,6 @@ with st.sidebar:
     dxf_input = st.file_uploader("Upload CAD Spec (DXF)", type=['dxf'])
 
     if dxf_input:
-        # 파일이 업로드되면 즉시 파싱 수행
         st.session_state.dxf_params = extract_dxf_params(dxf_input)
 
     if st.button("RUN ENGINE INITIALIZATION"):
@@ -61,7 +60,7 @@ with st.sidebar:
                 'model_ed': LinearRegression().fit(X, df['Endurance']),
                 'scaler': scaler, 'df_caulking': df
             })
-            st.success("Engine Initialized with CAD Specs!")
+            st.success("Engine Initialized!")
             st.rerun()
 
 # 5. 메인 뷰포트
@@ -79,7 +78,7 @@ if st.session_state['model_tq']:
                 scaled = st.session_state['scaler'].transform(data)
                 return (st.session_state['model_tq'].predict(scaled)[0] - target)**2
             res = minimize(obj, x0=[5.0, 2.5, 0], bounds=[(4,7), (1.5,3.5), (0,1)])
-            st.write(f"Optimal Result: CD={res.x[0]:.2f}, SC={res.x[1]:.2f}")
+            st.write(f"Optimal Result: CD={res.x[0]:.2f}, SC={res.x[1]:.2f}, Aging={res.x[2]:.0f}")
 
     with tab2:
         cd = st.slider("Caulking Distance", 4.0, 7.0, 5.5)
@@ -92,4 +91,4 @@ if st.session_state['model_tq']:
     with tab3:
         st.dataframe(st.session_state['df_caulking'])
 else:
-    st.info("파일을 업로드하고 초기화를 진행하세요.")
+    st.info("파일을 모두 업로드하고 초기화를 진행해주세요.")
